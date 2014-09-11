@@ -1,6 +1,6 @@
 (ns beanstalk-clj.core
   (:require [clojure.string :as string])
-  (:use [slingshot.slingshot :only [throw+]]
+  (:use [slingshot.slingshot :only [try+ throw+]]
         [clojure.java.io])
   (:import [java.net Socket]))
 
@@ -22,11 +22,12 @@
   (read [this] "Read from connection")
   (write [this data] "Write data to connection")
   (interact [this command expected_ok expected_err])
-  (interact-value [this command expected_ok])
-  (interact-yaml [this command expected_ok])
-  (interact-job [this command expected_ok])
+  (interact-value [this command expected_ok expected_err])
+  (interact-yaml [this command expected_ok expected_err])
+  (interact-job [this command expected_ok expected_err])
   (interact-peek [this command]))
 
+(defrecord Job [consumer jid size body reserved])
 
 (deftype Beanstalkd [socket reader writer]
   Interactive
@@ -63,17 +64,26 @@
    (write this command)
    (let [bin (read this)
          data (string/split bin #" ")
-         resp (first data)]
+         [status & results] data]
      (cond
-      (member? expected_ok resp)
-      data
+      (member? expected_ok status)
+      results
 
-      (member? expected_err resp)
+      (member? expected_err status)
       (throw+ {:type :command-failure :message bin})
 
       true
       (throw+ {:type :unexpected-response :message bin}))))
 
+  (interact-value
+   [this command expected_ok expected_err]
+   (first (interact this command expected_ok expected_err)))
+
+  (interact-job
+   [this command expected_ok expected_err]
+   (let [[jid size] (interact this command expected_ok expected_err)
+         bin (read this)]
+     (Job. this (Integer/parseInt jid) (Integer/parseInt size) bin true)))
   )
 
 
@@ -119,6 +129,42 @@
      ~@body))
 
 
+(defn put
+  ([beanstalkd body & {:keys [priority delay ttr]
+                       :or {priority default-priority
+                            delay 0
+                            ttr default-ttr}}]
+   (if (instance? String body)
+     (let [cmd (str (beanstalkd-cmd :put
+                               priority
+                               delay
+                               ttr
+                               (.length body))
+                    crlf
+                    body
+                    crlf)]
+       (interact beanstalkd
+                 cmd
+                 ["INSERTED"]
+                 ["JOB_TOO_BIG" "BURIED" "DRAINING"]))
+     (throw+ {:type :type-error :message "Job body must be a String"}))))
+
+(defn reserve
+  [beanstalkd]
+  (try+
+   (interact-job beanstalkd
+                 (beanstalkd-cmd :reserve)
+                 ["RESERVED"]
+                 ["DEADLINE_SOON" "TIMED_OUT"])
+   (catch [:type :command-failure] {:keys [message]}
+     (println message))))
+
+(defn use
+  [beanstalkd tube]
+  (interact-value beanstalkd
+            (beanstalkd-cmd :use tube)
+            ["USING"]
+            []))
 
 (defn watch
   [beanstalkd tube]
