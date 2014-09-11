@@ -21,9 +21,10 @@
   (close [this] "Close the connection")
   (read [this] "Read from connection")
   (write [this data] "Write data to connection")
-  (interact [this command expected_ok])
-  (interact-yaml [this command])
-  (interact-job [this command])
+  (interact [this command expected_ok expected_err])
+  (interact-value [this command expected_ok])
+  (interact-yaml [this command expected_ok])
+  (interact-job [this command expected_ok])
   (interact-peek [this command]))
 
 
@@ -58,7 +59,7 @@
      (.flush)))
 
   (interact
-   [this command expected_ok]
+   [this command expected_ok expected_err]
    (write this command)
    (let [bin (read this)
          data (string/split bin #" ")
@@ -67,8 +68,13 @@
       (member? expected_ok resp)
       data
 
+      (member? expected_err resp)
+      (throw+ {:type :command-failure :message bin})
+
       true
-      (throw+ {:type :unexpected-response :message bin})))))
+      (throw+ {:type :unexpected-response :message bin}))))
+
+  )
 
 
 (defn beanstalkd-factory
@@ -118,4 +124,5 @@
   [beanstalkd tube]
   (interact beanstalkd
             (beanstalkd-cmd :watch tube)
-            ["WATCHING"]))
+            ["WATCHING"]
+            []))
