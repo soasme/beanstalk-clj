@@ -116,4 +116,6 @@
 
 (defn watch
   [beanstalkd tube]
-  (interact beanstalkd (beanstalkd-cmd :watch tube) ["WATCHING"]))
+  (interact beanstalkd
+            (beanstalkd-cmd :watch tube)
+            ["WATCHING"]))

@@ -5,5 +5,4 @@
 (deftest watch-tube
   (testing "Watch tube"
     (let [bt (beanstalkd-factory)]
-      (println (watch bt "default")))
-    (is (= 0 0))))
+      (is (= (watch bt "default") ["WATCHING" "1"])))))
