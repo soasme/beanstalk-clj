@@ -52,7 +52,7 @@
    [this command]
    (write this command)
    (let [data (read this)]
-     data)))
+     (string/split data #" "))))
 
 
 (defn beanstalkd-factory
