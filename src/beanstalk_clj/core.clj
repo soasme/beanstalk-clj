@@ -291,3 +291,41 @@
             (beanstalkd-cmd :kick-job jid)
             ["KICKED"]
             ["NOT_FOUND"]))
+
+(defn delete
+  [beanstalkd jid]
+  (interact beanstalkd
+            (beanstalkd-cmd :delete jid)
+            ["DELETED"]
+            ["NOT_FOUND"]))
+
+(defn release
+  [beanstalkd jid & {:keys [priority delay]
+                     :or {priority default-priority
+                          delay 0}}]
+  (interact beanstalkd
+            (beanstalkd-cmd :release jid priority delay)
+            ["RELEASED" "BURIED"]
+            ["NOT_FOUND"]))
+
+(defn bury
+  [beanstalkd jid & {:keys [priority]
+                     :or {priority default-priority}}]
+  (interact beanstalkd
+            (beanstalkd-cmd :bury jid priority)
+            ["BURIED"]
+            ["NOT_FOUND"]))
+
+(defn touch
+  [beanstalkd jid]
+  (interact beanstalkd
+            (beanstalkd-cmd :touch jid)
+            ["TOUCHED"]
+            ["NOT_FOUND"]))
+
+(defn stats-job
+  [beanstalkd jid]
+  (interact-yaml beanstalkd
+                 (beanstalkd-cmd :stats-job jid)
+                 ["OK"]
+                 ["NOT_FOUND"]))
