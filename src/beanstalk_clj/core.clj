@@ -233,6 +233,11 @@
                   ["USING"]
                   []))
 
+(defn using
+  [beanstalkd]
+  (list-tube-used beanstalkd))
+
+
 (defn use
   [beanstalkd tube]
   (interact-value beanstalkd

@@ -71,9 +71,13 @@
       (is (= ["default"] (list-tubes bt))))
     (testing "List default tube used"
       (is (= "default" (list-tube-used bt))))
+    (testing "List using"
+      (is (= "default" (using bt))))
     (let [_ (use bt "test-tube")]
       (testing "List available tubes"
         (is (= ["default" "test-tube"] (list-tubes bt))))
       (testing "List tube used"
-        (is (= "test-tube" (list-tube-used bt)))))))
+        (is (= "test-tube" (list-tube-used bt))))
+      (testing "List using"
+        (is (= "test-tube" (using bt)))))))
 
