@@ -45,10 +45,15 @@
         consumer (beanstalkd-factory)]
     (watch producer "default")
     (use consumer "default")
-    (testing "Reserve body"
-      (put producer "body")
-      (let [job (reserve consumer)]
-        (is (:reserved job))
-        (is (number? (:jid job)))
-        (is (= (:size job) (.length "body")))
-        (is (= (:body job) "body"))))))
+    (let [handler (fn [timeout]
+                    (let [_ (put producer "body")
+                          job (reserve consumer :with-timeout timeout)]
+                      (is (:reserved job))
+                      (is (number? (:jid job)))
+                      (is (= (:size job) (.length "body")))
+                      (is (= (:body job) "body"))))]
+      ; FIXME
+      ;(testing "Reserve with timeout"
+      ;  (handler 1))
+      (testing "Reserve without timeout"
+        (handler nil)))))

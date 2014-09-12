@@ -70,10 +70,10 @@
       results
 
       (member? expected_err status)
-      (throw+ {:type :command-failure :message bin})
+      (throw+ {:type :command-failure :status status :results results})
 
       true
-      (throw+ {:type :unexpected-response :message bin}))))
+      (throw+ {:type :unexpected-response :status status :results results}))))
 
   (interact-value
    [this command expected_ok expected_err]
@@ -150,14 +150,22 @@
      (throw+ {:type :type-error :message "Job body must be a String"}))))
 
 (defn reserve
-  [beanstalkd]
+  ([beanstalkd & {:keys [with-timeout]
+                  :or {with-timeout nil}}]
   (try+
-   (interact-job beanstalkd
-                 (beanstalkd-cmd :reserve)
-                 ["RESERVED"]
-                 ["DEADLINE_SOON" "TIMED_OUT"])
-   (catch [:type :command-failure] {:keys [message]}
-     (println message))))
+   (let [cmd (if (nil? with-timeout)
+               (beanstalkd-cmd :reserve)
+               (beanstalkd-cmd :reserve-with-timeout with-timeout crlf))]
+     (println "debug" cmd)
+     (interact-job beanstalkd
+                   cmd
+                   ["RESERVED"]
+                   ["DEADLINE_SOON" "TIMED_OUT"]))
+   (catch [:type :command-failure] {:keys [status results]}
+     (cond (= status "TIMED_OUT")
+           nil
+           true
+           (throw+))))))
 
 (defn use
   [beanstalkd tube]
