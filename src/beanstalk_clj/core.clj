@@ -192,13 +192,6 @@
                   ["KICKED"]
                   []))
 
-(defn kick-job
-  [beanstalkd jid]
-  (interact beanstalkd
-            (beanstalkd-cmd :kick-job jid)
-            ["KICKED"]
-            ["NOT_FOUND"]))
-
 (defn peek
   [beanstalkd jid]
   (interact-peek beanstalkd
@@ -263,3 +256,38 @@
             (beanstalkd-cmd :watch tube)
             ["WATCHING"]
             []))
+
+(defn ignore
+  [beanstalkd tube]
+  (int (interact-value beanstalkd
+                       (beanstalkd-cmd :ignore tube)
+                       ["WATCHING"]
+                       ["NOT_IGNORED"])))
+
+(defn stats
+  [beanstalkd]
+  (interact-yaml beanstalkd
+                 (beanstalkd-cmd :stats)
+                 ["OK"]
+                 []))
+
+(defn stats-tube
+  [beanstalkd tube]
+  (interact-yaml beanstalkd
+                 (beanstalkd-cmd :stats-tube tube)
+                 ["OK"]
+                 ["NOT_FOUND"]))
+
+(defn pause_tube
+  [beanstalkd tube delay]
+  (interact beanstalkd
+            (beanstalkd-cmd :pause-tube tube delay)
+            ["PAUSED"]
+            ["NOT_FOUND"]))
+
+(defn kick-job
+  [beanstalkd jid]
+  (interact beanstalkd
+            (beanstalkd-cmd :kick-job jid)
+            ["KICKED"]
+            ["NOT_FOUND"]))
