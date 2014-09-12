@@ -245,6 +245,18 @@
             ["USING"]
             []))
 
+(defn list-tubes-watched
+  [beanstalkd]
+  (interact-yaml beanstalkd
+                 (beanstalkd-cmd :list-tubes-watched)
+                 ["OK"]
+                 []))
+
+(defn watching
+  [beanstalkd]
+  (list-tubes-watched beanstalkd))
+
+
 (defn watch
   [beanstalkd tube]
   (interact beanstalkd
