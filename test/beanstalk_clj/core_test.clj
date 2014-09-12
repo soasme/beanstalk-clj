@@ -65,9 +65,15 @@
     (use consumer "default")
     (testing "Kick at most bound jobs into the ready queue")))
 
-(deftest test-list-tubes
-  (let [bt (beanstalkd-factory)
-        _ (watch bt "test-tube")]
-    (testing "List tubes"
-      (is (= ["default" "test-tube"] (list-tubes bt))))))
+(deftest test-tubes
+  (let [bt (beanstalkd-factory)]
+    (testing "List default tubes"
+      (is (= ["default"] (list-tubes bt))))
+    (testing "List default tube used"
+      (is (= "default" (list-tube-used bt))))
+    (let [_ (use bt "test-tube")]
+      (testing "List available tubes"
+        (is (= ["default" "test-tube"] (list-tubes bt))))
+      (testing "List tube used"
+        (is (= "test-tube" (list-tube-used bt)))))))
 

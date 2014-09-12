@@ -226,6 +226,13 @@
                  ["OK"]
                  []))
 
+(defn list-tube-used
+  [beanstalkd]
+  (interact-value beanstalkd
+                  (beanstalkd-cmd :list-tube-used)
+                  ["USING"]
+                  []))
+
 (defn use
   [beanstalkd tube]
   (interact-value beanstalkd
