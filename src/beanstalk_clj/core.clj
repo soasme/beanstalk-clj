@@ -22,10 +22,13 @@
   (read [this] "Read from connection")
   (write [this data] "Write data to connection")
   (interact [this command expected_ok expected_err])
-  (interact-value [this command expected_ok expected_err])
-  (interact-yaml [this command expected_ok expected_err])
-  (interact-job [this command expected_ok expected_err])
+  (interact-value
+   [this command expected_ok expected_err])
+  (interact-job
+   [this command expected_ok expected_err]
+   [this command expected_ok expected_err reserved])
   (interact-peek [this command]))
+
 
 (defrecord Job [consumer jid size body reserved])
 
@@ -80,10 +83,16 @@
    (first (interact this command expected_ok expected_err)))
 
   (interact-job
-   [this command expected_ok expected_err]
+   [this command expected_ok expected_err reserved]
    (let [[jid size] (interact this command expected_ok expected_err)
          bin (read this)]
-     (Job. this (Integer/parseInt jid) (Integer/parseInt size) bin true)))
+     (Job. this (Integer/parseInt jid) (Integer/parseInt size) bin reserved)))
+
+
+  (interact-peek
+   [this command]
+   (try+
+    (interact-job this command ["FOUND"] ["NOT_FOUND"] false)))
   )
 
 
@@ -156,16 +165,52 @@
    (let [cmd (if (nil? with-timeout)
                (beanstalkd-cmd :reserve)
                (beanstalkd-cmd :reserve-with-timeout with-timeout crlf))]
-     (println "debug" cmd)
      (interact-job beanstalkd
                    cmd
                    ["RESERVED"]
-                   ["DEADLINE_SOON" "TIMED_OUT"]))
+                   ["DEADLINE_SOON" "TIMED_OUT"]
+                   true))
    (catch [:type :command-failure] {:keys [status results]}
      (cond (= status "TIMED_OUT")
            nil
            true
            (throw+))))))
+
+(defn kick
+  [beanstalkd & {:keys [bound]
+                 :or {bound 1}}]
+  (interact-value beanstalkd
+                  (beanstalkd-cmd :kick bound)
+                  ["KICKED"]
+                  []))
+
+(defn kick-job
+  [beanstalkd jid]
+  (interact beanstalkd
+            (beanstalkd-cmd :kick-job jid)
+            ["KICKED"]
+            ["NOT_FOUND"]))
+
+(defn peek
+  [beanstalkd jid]
+  (interact-peek beanstalkd
+                 (beanstalkd-cmd :peek jid)))
+
+(defn peek-ready
+  [beanstalkd]
+  (interact-peek beanstalkd
+                 (beanstalkd-cmd :peek-ready)))
+
+(defn peek-delayed
+  [beanstalkd]
+  (interact-peek beanstalkd
+                 (beanstalkd-cmd :peek-delayed)))
+
+(defn peek-buried
+  [beanstalkd]
+  (interact-peek beanstalkd
+                 (beanstalkd-cmd :peek-buried)))
+
 
 (defn use
   [beanstalkd tube]

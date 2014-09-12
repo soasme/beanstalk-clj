@@ -57,3 +57,10 @@
       ;  (handler 1))
       (testing "Reserve without timeout"
         (handler nil)))))
+
+(deftest kick-bound
+  (let [producer (beanstalkd-factory)
+        consumer (beanstalkd-factory)]
+    (watch producer "default")
+    (use consumer "default")
+    (testing "Kick at most bound jobs into the ready queue")))
