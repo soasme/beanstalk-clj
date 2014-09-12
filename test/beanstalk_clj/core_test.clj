@@ -64,3 +64,10 @@
     (watch producer "default")
     (use consumer "default")
     (testing "Kick at most bound jobs into the ready queue")))
+
+(deftest test-list-tubes
+  (let [bt (beanstalkd-factory)
+        _ (watch bt "test-tube")]
+    (testing "List tubes"
+      (is (= ["default" "test-tube"] (list-tubes bt))))))
+

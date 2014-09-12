@@ -1,5 +1,6 @@
 (ns beanstalk-clj.core
-  (:require [clojure.string :as string])
+  (:require [clojure.string :as string]
+            [clj-yaml.core :as yaml])
   (:use [slingshot.slingshot :only [try+ throw+]]
         [clojure.java.io])
   (:import [java.net Socket]))
@@ -27,6 +28,7 @@
   (interact-job
    [this command expected_ok expected_err]
    [this command expected_ok expected_err reserved])
+  (interact-yaml [this command expected_ok expected_err])
   (interact-peek [this command]))
 
 
@@ -93,6 +95,12 @@
    [this command]
    (try+
     (interact-job this command ["FOUND"] ["NOT_FOUND"] false)))
+
+  (interact-yaml
+   [this command expected_ok expected_err]
+   (let [[_ size] (interact this command expected_ok expected_err)
+         bin (read this)]
+     (yaml/parse-string bin)))
   )
 
 
@@ -211,6 +219,12 @@
   (interact-peek beanstalkd
                  (beanstalkd-cmd :peek-buried)))
 
+(defn list-tubes
+  [beanstalkd]
+  (interact-yaml beanstalkd
+                 (beanstalkd-cmd :list-tubes)
+                 ["OK"]
+                 []))
 
 (defn use
   [beanstalkd tube]
