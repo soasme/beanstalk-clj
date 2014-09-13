@@ -42,15 +42,13 @@
 (deftest reserve-body
   (let [producer (beanstalkd-factory)
         consumer (beanstalkd-factory)]
-    (watch producer "default")
-    (use consumer "default")
     (let [handler (fn [timeout]
                     (let [_ (put producer "body")
                           job (reserve consumer :with-timeout timeout)]
-                      (is (:reserved job))
-                      (is (number? (:jid job)))
-                      (is (= (:size job) (.length "body")))
-                      (is (= (:body job) "body"))))]
+                      (is (.reserved? job))
+                      (is (number? (.jid job)))
+                      (is (= (.length job) (.length "body")))
+                      (is (= (.body job) "body"))))]
       ; FIXME
       ;(testing "Reserve with timeout"
       ;  (handler 1))

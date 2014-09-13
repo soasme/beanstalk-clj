@@ -27,12 +27,12 @@
    [this command expected_ok expected_err])
   (interact-job
    [this command expected_ok expected_err]
-   [this command expected_ok expected_err reserved])
+   [this command expected_ok expected_err reserved?])
   (interact-yaml [this command expected_ok expected_err])
   (interact-peek [this command]))
 
 
-(defrecord Job [consumer jid size body reserved])
+(defrecord Job [consumer jid length body reserved?])
 
 (deftype Beanstalkd [socket reader writer]
   Interactive
@@ -85,10 +85,10 @@
    (first (interact this command expected_ok expected_err)))
 
   (interact-job
-   [this command expected_ok expected_err reserved]
+   [this command expected_ok expected_err reserved?]
    (let [[jid size] (interact this command expected_ok expected_err)
          bin (read this)]
-     (Job. this (Integer/parseInt jid) (Integer/parseInt size) bin reserved)))
+     (Job. this (bigint jid) (Integer/parseInt size) bin reserved?)))
 
 
   (interact-peek
