@@ -32,35 +32,40 @@
       (is (= (number? (first (watch bt "default"))))))))
 
 (deftest enqueue-jobs
-  (let [bt (beanstalkd-factory)]
+  (let [producer (beanstalkd-factory)
+        consumer (beanstalkd-factory)]
     (testing "Put body (with default options)"
-      (is (= (number? (put bt "body")))))
+      (let [jid (put producer "body")]
+        (is (= (number? jid)))
+        (let [job (reserve consumer)]
+          (del job))))
     (testing "Put too big body")
     (testing "Put non-str body"
-      (is-thrown+? {:type :type-error :message "Job body must be a String"} (put bt 1234)))))
+      (is-thrown+?
+       {:type :type-error :message "Job body must be a String"}
+       (put producer 1234)))))
 
-(deftest reserve-body
-  (let [producer (beanstalkd-factory)
+(deftest put-reserve-delete
+  (defn asserts [timeout]
+    (let [producer (beanstalkd-factory)
         consumer (beanstalkd-factory)]
-    (let [handler (fn [timeout]
-                    (let [_ (put producer "body")
-                          job (reserve consumer :with-timeout timeout)]
-                      (is (.reserved? job))
-                      (is (number? (.jid job)))
-                      (is (= (.length job) (.length "body")))
-                      (is (= (.body job) "body"))))]
-      ; FIXME
-      ;(testing "Reserve with timeout"
-      ;  (handler 1))
-      (testing "Reserve without timeout"
-        (handler nil)))))
+      (testing "Reserve with timeout"
+       (let [_ (put producer "body")
+             job (reserve consumer :with-timeout timeout)]
+         (is (.reserved? job))
+         (is (number? (.jid job)))
+         (is (= (.length job) (.length "body")))
+         (is (= (.body job) "body"))
+         (del job)
+         ))))
+  (asserts nil)
+  (asserts 0)
+  (asserts 1))
 
-(deftest kick-bound
-  (let [producer (beanstalkd-factory)
-        consumer (beanstalkd-factory)]
-    (watch producer "default")
-    (use consumer "default")
-    (testing "Kick at most bound jobs into the ready queue")))
+(deftest reserve-with-timeout-return-nil-imediately
+  (testing "If you use a timeout of 0, reserve will immediately return either a job or None"
+    (let [consumer (beanstalkd-factory)]
+      (is (nil? (reserve consumer :with-timeout 0))))))
 
 (deftest test-tubes
   (let [bt (beanstalkd-factory)]

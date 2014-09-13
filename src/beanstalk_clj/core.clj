@@ -31,8 +31,10 @@
   (interact-yaml [this command expected_ok expected_err])
   (interact-peek [this command]))
 
+(defprotocol JobOperatation
+  (del [this] "Delete job"))
 
-(defrecord Job [consumer jid length body reserved?])
+(deftype Job [consumer jid length body reserved?])
 
 (deftype Beanstalkd [socket reader writer]
   Interactive
@@ -172,7 +174,7 @@
   (try+
    (let [cmd (if (nil? with-timeout)
                (beanstalkd-cmd :reserve)
-               (beanstalkd-cmd :reserve-with-timeout with-timeout crlf))]
+               (beanstalkd-cmd :reserve-with-timeout with-timeout))]
      (interact-job beanstalkd
                    cmd
                    ["RESERVED"]
@@ -329,3 +331,8 @@
                  (beanstalkd-cmd :stats-job jid)
                  ["OK"]
                  ["NOT_FOUND"]))
+
+(extend-type Job
+  JobOperatation
+  (del [this]
+       (delete (.consumer this) (.jid this))))
