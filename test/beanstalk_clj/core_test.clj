@@ -121,4 +121,10 @@
       (is (= 0 (:age stats-map)))
       (is (= "reserved" (:state stats-map))))
 
-    (del job)))
+    (del job)
+
+    (testing "command failed on stats deleted job"
+      (is-thrown+? {:type :command-failure,
+                    :status "NOT_FOUND",
+                    :results []}
+                   (stat job)))))
