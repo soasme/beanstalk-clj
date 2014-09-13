@@ -16,7 +16,7 @@
   (cond
    (empty? list) false
    (= (first list) elt) true
-   true (member? (rest list) elt)))
+   true (recur (rest list) elt)))
 
 (defprotocol Interactive
   (close [this] "Close the connection")
