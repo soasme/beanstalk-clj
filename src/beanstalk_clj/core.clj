@@ -261,10 +261,10 @@
 
 (defn ignore
   [beanstalkd tube]
-  (int (interact-value beanstalkd
+  (interact-value beanstalkd
                        (beanstalkd-cmd :ignore tube)
                        ["WATCHING"]
-                       ["NOT_IGNORED"])))
+                       ["NOT_IGNORED"]))
 
 (defn stats
   [beanstalkd]

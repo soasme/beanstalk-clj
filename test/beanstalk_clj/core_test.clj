@@ -26,10 +26,7 @@
   [& body]
   `(is (~'thrown-with-msg? ~(slingshot-exception-class) ~@body)))
 
-(deftest watch-tube
-  (testing "Watch tube"
-    (let [bt (beanstalkd-factory)]
-      (is (= (number? (first (watch bt "default"))))))))
+; Basic Operation
 
 (deftest enqueue-jobs
   (let [producer (beanstalkd-factory)
@@ -67,7 +64,14 @@
     (let [consumer (beanstalkd-factory)]
       (is (nil? (reserve consumer :with-timeout 0))))))
 
+; Tube Management
+
 (deftest test-tubes
+
+  (testing "Watch tube"
+    (let [bt (beanstalkd-factory)]
+      (is (= (number? (first (watch bt "default")))))))
+
   (let [bt (beanstalkd-factory)]
     (testing "List default tubes"
       (is (= ["default"] (list-tubes bt))))
@@ -94,5 +98,8 @@
         (is (= ["default" "test-tube"] (watching bt))))
 
       (testing "List watching tubes"
-        (is (= ["default" "test-tube"] (list-tubes-watched bt)))))))
+        (is (= ["default" "test-tube"] (list-tubes-watched bt))))
 
+      (testing "Ignore tube"
+        (let [_ (ignore bt "test-tube")]
+          (is (= ["default"] (watching bt))))))))
