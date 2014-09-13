@@ -31,11 +31,10 @@
     (let [bt (beanstalkd-factory)]
       (is (= (number? (first (watch bt "default"))))))))
 
-(deftest put-body
+(deftest enqueue-jobs
   (let [bt (beanstalkd-factory)]
-    (watch bt "default")
     (testing "Put body (with default options)"
-      (is (= (number? (first (put bt "body"))))))
+      (is (= (number? (put bt "body")))))
     (testing "Put too big body")
     (testing "Put non-str body"
       (is-thrown+? {:type :type-error :message "Job body must be a String"} (put bt 1234)))))

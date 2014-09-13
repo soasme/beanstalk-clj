@@ -160,7 +160,7 @@
                     crlf
                     body
                     crlf)]
-       (interact beanstalkd
+       (interact-value beanstalkd
                  cmd
                  ["INSERTED"]
                  ["JOB_TOO_BIG" "BURIED" "DRAINING"]))
