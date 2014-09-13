@@ -32,7 +32,8 @@
   (interact-peek [this command]))
 
 (defprotocol JobOperatation
-  (del [this] "Delete job"))
+  (del [this] "Delete job")
+  (stat [this] "Statistics"))
 
 (deftype Job [consumer jid length body reserved?])
 
@@ -335,4 +336,6 @@
 (extend-type Job
   JobOperatation
   (del [this]
-       (delete (.consumer this) (.jid this))))
+       (delete (.consumer this) (.jid this)))
+  (stat [this]
+         (stats-job (.consumer this) (.jid this))))

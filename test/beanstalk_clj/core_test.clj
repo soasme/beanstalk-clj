@@ -102,4 +102,23 @@
 
       (testing "Ignore tube"
         (let [_ (ignore bt "test-tube")]
-          (is (= ["default"] (watching bt))))))))
+          (is (= ["default"] (watching bt)))
+          (is-thrown+? {:type :command-failure, :status "NOT_IGNORED", :results nil}
+                      (ignore bt "default")))))))
+
+
+; Statistics
+
+(deftest beanstalk-statistics
+
+  (let [producer (beanstalkd-factory)
+        consumer (beanstalkd-factory)
+        jid (put producer "body")
+        job (reserve consumer)
+        stats-map (stat job)]
+    (testing "stats"
+      (is (= "default" (:tube stats-map)))
+      (is (= 0 (:age stats-map)))
+      (is (= "reserved" (:state stats-map))))
+
+    (del job)))
