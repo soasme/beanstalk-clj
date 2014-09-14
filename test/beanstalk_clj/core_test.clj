@@ -132,4 +132,8 @@
     (testing "stats default tube"
       (let [s (stats-tube consumer "default")]
         (is (= 0 (:current-jobs-ready s)))
-        (is (= "default" (:name s)))))))
+        (is (= "default" (:name s)))))
+
+    (testing "server-level statistics"
+      (let [s (stats consumer)]
+        (is (= 0 (:current-jobs-reserved s)))))))
