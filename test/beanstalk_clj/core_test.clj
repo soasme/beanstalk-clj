@@ -118,7 +118,6 @@
         stats-map (stat job)]
     (testing "stats"
       (is (= "default" (:tube stats-map)))
-      (is (= 0 (:age stats-map)))
       (is (= "reserved" (:state stats-map))))
 
     (del job)
@@ -131,9 +130,20 @@
 
     (testing "stats default tube"
       (let [s (stats-tube consumer "default")]
-        (is (= 0 (:current-jobs-ready s)))
         (is (= "default" (:name s)))))
 
     (testing "server-level statistics"
       (let [s (stats consumer)]
         (is (= 0 (:current-jobs-reserved s)))))))
+
+
+(deftest a-job-with-a-delay
+  (testing "a job with a delay will only be available for reservation once this delay passed"
+    (let [producer (beanstalkd-factory)
+          consumer (beanstalkd-factory)
+          jid (put producer "body" :delay 1)
+          reserve-imediately (reserve consumer :with-timeout 0)
+          job (reserve consumer :with-timeout 1)]
+      (is (nil? reserve-imediately))
+      (is (= "body" (.body job)))
+      (del job))))
