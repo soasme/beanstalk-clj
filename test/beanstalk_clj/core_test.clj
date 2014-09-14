@@ -127,4 +127,9 @@
       (is-thrown+? {:type :command-failure,
                     :status "NOT_FOUND",
                     :results []}
-                   (stat job)))))
+                   (stat job)))
+
+    (testing "stats default tube"
+      (let [s (stats-tube consumer "default")]
+        (is (= 0 (:current-jobs-ready s)))
+        (is (= "default" (:name s)))))))
