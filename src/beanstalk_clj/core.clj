@@ -267,12 +267,24 @@
                        ["WATCHING"]
                        ["NOT_IGNORED"]))
 
-(defn stats
-  [beanstalkd]
+(defn stats-job
+  [beanstalkd jid]
   (interact-yaml beanstalkd
-                 (beanstalkd-cmd :stats)
+                 (beanstalkd-cmd :stats-job jid)
                  ["OK"]
-                 []))
+                 ["NOT_FOUND"]))
+
+(defn stats
+  [instance]
+  (cond
+   (instance? Beanstalkd instance)
+   (interact-yaml instance
+                  (beanstalkd-cmd :stats)
+                  ["OK"]
+                  [])
+
+   (instance? Job instance)
+   (stats-job (.consumer instance) (.jid instance))))
 
 (defn stats-tube
   [beanstalkd tube]
@@ -296,11 +308,13 @@
             ["NOT_FOUND"]))
 
 (defn delete
-  [beanstalkd jid]
+  ([beanstalkd jid]
   (interact beanstalkd
             (beanstalkd-cmd :delete jid)
             ["DELETED"]
             ["NOT_FOUND"]))
+  ([job]
+   (delete (.consumer job) (.jid job))))
 
 (defn release
   [beanstalkd jid & {:keys [priority delay]
@@ -325,17 +339,3 @@
             (beanstalkd-cmd :touch jid)
             ["TOUCHED"]
             ["NOT_FOUND"]))
-
-(defn stats-job
-  [beanstalkd jid]
-  (interact-yaml beanstalkd
-                 (beanstalkd-cmd :stats-job jid)
-                 ["OK"]
-                 ["NOT_FOUND"]))
-
-(extend-type Job
-  JobOperatation
-  (del [this]
-       (delete (.consumer this) (.jid this)))
-  (stat [this]
-         (stats-job (.consumer this) (.jid this))))

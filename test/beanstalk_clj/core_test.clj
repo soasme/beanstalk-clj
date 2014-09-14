@@ -35,7 +35,7 @@
       (let [jid (put producer "body")]
         (is (= (number? jid)))
         (let [job (reserve consumer)]
-          (del job))))
+          (delete job))))
     (testing "Put too big body")
     (testing "Put non-str body"
       (is-thrown+?
@@ -53,7 +53,7 @@
          (is (number? (.jid job)))
          (is (= (.length job) (.length "body")))
          (is (= (.body job) "body"))
-         (del job)
+         (delete job)
          ))))
   (asserts nil)
   (asserts 0)
@@ -115,18 +115,18 @@
         consumer (beanstalkd-factory)
         jid (put producer "body")
         job (reserve consumer)
-        stats-map (stat job)]
+        stats-map (stats job)]
     (testing "stats"
       (is (= "default" (:tube stats-map)))
       (is (= "reserved" (:state stats-map))))
 
-    (del job)
+    (delete job)
 
     (testing "command failed on stats deleted job"
       (is-thrown+? {:type :command-failure,
                     :status "NOT_FOUND",
                     :results []}
-                   (stat job)))
+                   (stats job)))
 
     (testing "stats default tube"
       (let [s (stats-tube consumer "default")]
@@ -146,4 +146,4 @@
           job (reserve consumer :with-timeout 1)]
       (is (nil? reserve-imediately))
       (is (= "body" (.body job)))
-      (del job))))
+      (delete job))))
