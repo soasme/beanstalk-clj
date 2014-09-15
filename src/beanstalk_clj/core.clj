@@ -187,13 +187,7 @@
            true
            (throw+))))))
 
-(defn kick
-  [beanstalkd & {:keys [bound]
-                 :or {bound 1}}]
-  (interact-value beanstalkd
-                  (beanstalkd-cmd :kick bound)
-                  ["KICKED"]
-                  []))
+
 
 (defn peek
   [beanstalkd jid]
@@ -307,6 +301,21 @@
             ["KICKED"]
             ["NOT_FOUND"]))
 
+(defn kick
+  ([beanstalkd bound]
+   (interact-value beanstalkd
+                  (beanstalkd-cmd :kick bound)
+                  ["KICKED"]
+                  []))
+  ([instance]
+   (cond
+    (instance? Beanstalkd instance)
+    (kick instance 1)
+
+    (instance? Job instance)
+    (kick-job (.consumer instance) (.jid instance)))))
+
+
 (defn delete
   ([beanstalkd jid]
   (interact beanstalkd
@@ -336,12 +345,19 @@
 
 
 (defn bury
-  [beanstalkd jid & {:keys [priority]
+  [instance & {:keys [jid priority]
                      :or {priority default-priority}}]
-  (interact beanstalkd
+  (cond
+   (instance? Beanstalkd instance)
+   (interact instance
             (beanstalkd-cmd :bury jid priority)
             ["BURIED"]
-            ["NOT_FOUND"]))
+            ["NOT_FOUND"])
+
+   (instance? Job instance)
+   (bury (.consumer instance)
+         :jid (.jid instance)
+         :priority priority)))
 
 (defn touch
   [beanstalkd jid]

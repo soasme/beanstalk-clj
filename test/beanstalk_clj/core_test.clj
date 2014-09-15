@@ -159,3 +159,18 @@
       (release job)
       (is (= "ready" (:state (stats job))))
       (delete job))))
+
+(deftest bury-and-kick
+  (let [producer (beanstalkd-factory)
+        consumer (beanstalkd-factory)
+        jid (put producer "body")
+        job (reserve consumer)
+        ]
+    (testing "bury job"
+      (bury job)
+      (is (= "buried" (:state (stats job))))
+      (is (nil? (reserve consumer :with-timeout 0))))
+    (testing "kick job"
+      (kick job)
+      (is (= "ready" (:state (stats job)))))
+    (delete consumer jid)))
