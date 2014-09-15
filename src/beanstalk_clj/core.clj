@@ -360,8 +360,10 @@
          :priority priority)))
 
 (defn touch
-  [beanstalkd jid]
+  ([beanstalkd jid]
   (interact beanstalkd
             (beanstalkd-cmd :touch jid)
             ["TOUCHED"]
             ["NOT_FOUND"]))
+  ([job]
+   (touch (.consumer job) (.jid job))))
