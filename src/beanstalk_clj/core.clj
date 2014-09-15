@@ -161,12 +161,11 @@
                                ttr
                                (.length body))
                     crlf
-                    body
-                    crlf)]
-       (interact-value beanstalkd
+                    body)]
+       (bigint (interact-value beanstalkd
                  cmd
                  ["INSERTED"]
-                 ["JOB_TOO_BIG" "BURIED" "DRAINING"]))
+                 ["JOB_TOO_BIG" "BURIED" "DRAINING"])))
      (throw+ {:type :type-error :message "Job body must be a String"}))))
 
 (defn reserve
@@ -208,6 +207,7 @@
   [beanstalkd]
   (interact-peek beanstalkd
                  (beanstalkd-cmd :peek-buried)))
+
 
 (defn list-tubes
   [beanstalkd]

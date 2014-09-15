@@ -174,3 +174,43 @@
       (kick job)
       (is (= "ready" (:state (stats job)))))
     (delete consumer jid)))
+
+(deftest inspecting-jobs
+  ; TODO: test peek-delayed, peek-buried
+  (let [producer (beanstalkd-factory)
+        consumer (beanstalkd-factory)
+        jid (put producer "body")]
+    (testing "peeking non-existing job"
+      (is-thrown+?
+       {:type :command-failure, :status "NOT_FOUND", :results nil}
+       (peek consumer "00000000000000")))
+
+    (testing "peek did not reserve the job"
+      (let [job (peek consumer jid)]
+        (is (= "body" (. job body)))
+        (is (= "ready" (:state (stats job))))))
+
+    (testing "peek ready"
+      (let [job (peek-ready consumer)]
+        (is (= jid (.jid job)))
+        (is-thrown+?
+          {:type :command-failure, :status "NOT_FOUND", :results nil}
+          (release job))
+        (is (= "ready" (:state (stats job))))
+
+        (delete job)
+        (is-thrown+?
+          {:type :command-failure, :status "NOT_FOUND", :results nil}
+          (stats job))))))
+
+(deftest job-priorities
+  (let [producer (beanstalkd-factory)
+        consumer (beanstalkd-factory)
+        jid42 (put producer "priority 42" :priority 42)
+        jid21 (put producer "priority 21" :priority 21)
+        jid21twice (put producer "priority 21 twice" :priority 21)
+        ]
+    (is (= "priority 21" (. (reserve consumer) body)))
+    (is (= "priority 21 twice" (. (reserve consumer) body)))
+    (is (= "priority 42" (. (reserve consumer) body)))
+    (map (fn [id] (delete consumer id)) '(jid42 jid21 jid21twice))))
