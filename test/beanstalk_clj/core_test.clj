@@ -146,4 +146,16 @@
           job (reserve consumer :with-timeout 1)]
       (is (nil? reserve-imediately))
       (is (= "body" (.body job)))
+      (is (= "reserved" (:state (stats job))))
+      (delete job))))
+
+(deftest release-job
+  (testing "release the job back to the tube it came from"
+    (let [producer (beanstalkd-factory)
+          consumer (beanstalkd-factory)
+          jid (put producer "body")
+          job (reserve consumer)
+          ]
+      (release job)
+      (is (= "ready" (:state (stats job))))
       (delete job))))

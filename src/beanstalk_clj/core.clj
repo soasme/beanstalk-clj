@@ -293,7 +293,7 @@
                  ["OK"]
                  ["NOT_FOUND"]))
 
-(defn pause_tube
+(defn pause-tube
   [beanstalkd tube delay]
   (interact beanstalkd
             (beanstalkd-cmd :pause-tube tube delay)
@@ -317,13 +317,23 @@
    (delete (.consumer job) (.jid job))))
 
 (defn release
-  [beanstalkd jid & {:keys [priority delay]
+  [instance & {:keys [jid priority delay]
                      :or {priority default-priority
-                          delay 0}}]
-  (interact beanstalkd
-            (beanstalkd-cmd :release jid priority delay)
-            ["RELEASED" "BURIED"]
-            ["NOT_FOUND"]))
+                          delay 0
+                          jid nil}}]
+  (cond
+   (instance? Beanstalkd instance)
+   (interact instance
+             (beanstalkd-cmd :release jid priority delay)
+             ["RELEASED" "BURIED"]
+             ["NOT_FOUND"])
+
+   (instance? Job instance)
+   (release (.consumer instance)
+            :jid (.jid instance)
+            :priority priority
+            :delay delay)))
+
 
 (defn bury
   [beanstalkd jid & {:keys [priority]
