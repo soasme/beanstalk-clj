@@ -10,6 +10,7 @@
 (def ^:const default-priority 2147483648) ; 2^31
 (def ^:const default-ttr 120)
 (def ^:const crlf (str \return \newline))
+(def ^:dynamic ^:private *beanstalkd* nil)
 
 (defn member? [list elt]
   "True if list contains at least one instance of elt"
@@ -131,14 +132,19 @@
   (str data))
 
 
+(defn add-method
+  [^clojure.lang.MultiFn multifn dispatch-val method]
+  (. multifn addMethod dispatch-val method))
 
-;; (defn- with-beanstalkd*
-;;   [f]
-;;   (fn [beanstalkd & rest :as args]
-;;     (if (and (thread-bound? *beanstalkd*)
-;;              (not (identical? *beanstalkd* beanstalkd)))
-;;       (f *beanstalkd* args)
-;;       (f beanstalkd rest))))
+
+
+(defn- with-beanstalkd*
+  [f]
+   (fn [& [beanstalkd & rest :as args]]
+     (if (and (thread-bound? #'*beanstalkd*)
+              (not (identical? *beanstalkd* beanstalkd)))
+       (apply f *beanstalkd* args)
+       (apply f beanstalkd rest))))
 
 
 (defmacro with-beanstalkd
@@ -146,7 +152,19 @@
    of all of the operations within the dynamic scope of body of code."
   [config & body]
   `(binding [*beanstalkd* (beanstalkd-factory config)]
-     ~@body))
+     ~@body
+     (.close *beanstalkd*)))
+
+(defn inject-beanstalkd
+  [multifn]
+  (let [f ((methods multifn) Beanstalkd)]
+    (add-method multifn Beanstalkd (with-beanstalkd* f))))
+
+(defmacro ^:private defmethod-beanstalkd
+  [name & body]
+  `(do
+     (defmethod ~name Beanstalkd ~@body)
+     (inject-beanstalkd ~name)))
 
 
 (defn put
@@ -389,7 +407,7 @@
   (fn [instance & rest]
     (type instance)))
 
-(defmethod delete Beanstalkd
+(defmethod-beanstalkd delete
   [beanstalkd jid]
   (interact beanstalkd
             (beanstalkd-cmd :delete jid)
