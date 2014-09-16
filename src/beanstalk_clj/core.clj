@@ -228,7 +228,7 @@
   (list-tube-used beanstalkd))
 
 
-(defn use
+(defn use-tube
   [beanstalkd tube]
   (interact-value beanstalkd
             (beanstalkd-cmd :use tube)
@@ -247,7 +247,7 @@
   (list-tubes-watched beanstalkd))
 
 
-(defn watch
+(defn watch-tube
   [beanstalkd tube]
   (interact beanstalkd
             (beanstalkd-cmd :watch tube)
@@ -260,25 +260,6 @@
                        (beanstalkd-cmd :ignore tube)
                        ["WATCHING"]
                        ["NOT_IGNORED"]))
-
-(defn stats-job
-  [beanstalkd jid]
-  (interact-yaml beanstalkd
-                 (beanstalkd-cmd :stats-job jid)
-                 ["OK"]
-                 ["NOT_FOUND"]))
-
-(defn stats
-  [instance]
-  (cond
-   (instance? Beanstalkd instance)
-   (interact-yaml instance
-                  (beanstalkd-cmd :stats)
-                  ["OK"]
-                  [])
-
-   (instance? Job instance)
-   (stats-job (.consumer instance) (.jid instance))))
 
 (defn stats-tube
   [beanstalkd tube]
@@ -294,6 +275,27 @@
             ["PAUSED"]
             ["NOT_FOUND"]))
 
+(defn stats-job
+  [beanstalkd jid]
+  (interact-yaml beanstalkd
+                 (beanstalkd-cmd :stats-job jid)
+                 ["OK"]
+                 ["NOT_FOUND"]))
+
+(defmulti stats
+  (fn [instance] (type instance)))
+
+(defmethod stats Beanstalkd
+  [beanstalkd]
+  (interact-yaml beanstalkd
+                  (beanstalkd-cmd :stats)
+                  ["OK"]
+                  []))
+
+(defmethod stats Job
+  [job]
+  (stats-job (.consumer job) (.jid job)))
+
 (defn kick-job
   [beanstalkd jid]
   (interact beanstalkd
@@ -301,69 +303,100 @@
             ["KICKED"]
             ["NOT_FOUND"]))
 
-(defn kick
+
+(defmulti kick
+  (fn [instance & rest]
+    (type instance)))
+
+(defmethod kick Beanstalkd
   ([beanstalkd bound]
    (interact-value beanstalkd
-                  (beanstalkd-cmd :kick bound)
-                  ["KICKED"]
-                  []))
-  ([instance]
-   (cond
-    (instance? Beanstalkd instance)
-    (kick instance 1)
+                   (beanstalkd-cmd :kick bound)
+                   ["KICKED"]
+                   []))
+  ([beanstalkd]
+   (kick beanstalkd 1)))
 
-    (instance? Job instance)
-    (kick-job (.consumer instance) (.jid instance)))))
+(defmethod kick Job
+  [job]
+  (kick-job (.consumer job) (.jid job)))
 
+(defn- job-priority
+  [job]
+  (let [stats (stats job)]
+    (if (nil? stats)
+      default-priority
+      (:pri stats))))
 
-(defn delete
+(defmulti bury
+  (fn [instance & rest]
+    (type instance)))
+
+(defmethod bury Beanstalkd
+  ([beanstalkd jid priority]
+    (interact beanstalkd
+              (beanstalkd-cmd :bury jid priority)
+              ["BURIED"]
+              ["NOT_FOUND"]))
   ([beanstalkd jid]
+   (bury beanstalkd jid default-priority)))
+
+(defmethod bury Job
+  ([job priority]
+   (bury (.consumer job) (.jid job) priority))
+  ([job]
+   (bury (.consumer job) (.jid job) (job-priority job))))
+
+
+(defmulti release
+  (fn [instance & rest]
+    (type instance)))
+
+(defmethod release Beanstalkd
+  [beanstalkd jid & {:keys [priority delay]
+                     :or {priority default-priority
+                          delay 0}}]
+  (interact beanstalkd
+             (beanstalkd-cmd :release jid priority delay)
+             ["RELEASED" "BURIED"]
+             ["NOT_FOUND"]))
+
+(defmethod release Job
+  [job & {:keys [priority delay]
+          :or {priority default-priority ; FIXME
+               delay 0}}]
+  (release (.consumer job)
+           (.jid job)
+           :priority priority
+           :delay delay))
+
+(defmulti touch
+  (fn [instance & rest]
+    (type instance)))
+
+(defmethod touch Beanstalkd
+  [beanstalkd jid]
+  (interact beanstalkd
+            (beanstalkd-cmd :touch (first rest))
+            ["TOUCHED"]
+            ["NOT_FOUND"]))
+
+(defmethod touch Job
+  [job]
+  (touch (.consumer job) (.jid job)))
+
+(defmulti delete
+  (fn [instance & rest]
+    (type instance)))
+
+(defmethod delete Beanstalkd
+  [beanstalkd jid]
   (interact beanstalkd
             (beanstalkd-cmd :delete jid)
             ["DELETED"]
             ["NOT_FOUND"]))
-  ([job]
-   (delete (.consumer job) (.jid job))))
 
-(defn release
-  [instance & {:keys [jid priority delay]
-                     :or {priority default-priority
-                          delay 0
-                          jid nil}}]
-  (cond
-   (instance? Beanstalkd instance)
-   (interact instance
-             (beanstalkd-cmd :release jid priority delay)
-             ["RELEASED" "BURIED"]
-             ["NOT_FOUND"])
+(defmethod delete Job
+  [job]
+  (delete (.consumer job) (.jid job)))
 
-   (instance? Job instance)
-   (release (.consumer instance)
-            :jid (.jid instance)
-            :priority priority
-            :delay delay)))
-
-
-(defn bury
-  [instance & {:keys [jid priority]
-                     :or {priority default-priority}}]
-  (cond
-   (instance? Beanstalkd instance)
-   (interact instance
-            (beanstalkd-cmd :bury jid priority)
-            ["BURIED"]
-            ["NOT_FOUND"])
-
-   (instance? Job instance)
-   (bury (.consumer instance)
-         :jid (.jid instance)
-         :priority priority)))
-
-(defn touch
-  ([beanstalkd jid]
-  (interact beanstalkd
-            (beanstalkd-cmd :touch jid)
-            ["TOUCHED"]
-            ["NOT_FOUND"]))
-  ([job]
-   (touch (.consumer job) (.jid job))))

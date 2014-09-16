@@ -70,7 +70,7 @@
 
   (testing "Watch tube"
     (let [bt (beanstalkd-factory)]
-      (is (= (number? (first (watch bt "default")))))))
+      (is (= (number? (first (watch-tube bt "default")))))))
 
   (let [bt (beanstalkd-factory)]
     (testing "List default tubes"
@@ -83,7 +83,7 @@
       (is (= "default" (using bt))))
 
 
-    (let [_ (use bt "test-tube")]
+    (let [_ (use-tube bt "test-tube")]
       (testing "List available tubes"
         (is (= ["default" "test-tube"] (list-tubes bt))))
 
@@ -93,7 +93,7 @@
       (testing "Get using"
         (is (= "test-tube" (using bt)))))
 
-    (let [_ (watch bt "test-tube")]
+    (let [_ (watch-tube bt "test-tube")]
       (testing "List watching tubes"
         (is (= ["default" "test-tube"] (watching bt))))
 
@@ -211,6 +211,8 @@
         jid21twice (put producer "priority 21 twice" :priority 21)
         ]
     (is (= "priority 21" (. (reserve consumer) body)))
+    (delete consumer jid21)
     (is (= "priority 21 twice" (. (reserve consumer) body)))
+    (delete consumer jid21twice)
     (is (= "priority 42" (. (reserve consumer) body)))
-    (map (fn [id] (delete consumer id)) '(jid42 jid21 jid21twice))))
+    (delete consumer jid42)))
