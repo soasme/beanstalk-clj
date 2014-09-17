@@ -40,7 +40,21 @@
     (testing "Put non-str body"
       (is-thrown+?
        {:type :type-error :message "Job body must be a String"}
-       (put producer 1234)))))
+       (put producer 1234)))
+    (.close producer)
+    (.close consumer))
+
+  (testing "put and delete operation with beanstalkd"
+    (with-beanstalkd (beanstalkd-factory)
+      (put "body"))
+    (with-beanstalkd (beanstalkd-factory)
+      (let [job (reserve)]
+        (is (= "body" (.body job)))
+        (delete job))))
+  (testing "put non-str body in with statement"
+    (with-beanstalkd (beanstalkd-factory)
+      (is-thrown+? {:type :type-error :message "Job body must be a String"}
+                   (put 1234)))))
 
 (deftest put-reserve-delete
   (defn asserts [timeout]
@@ -62,7 +76,10 @@
 (deftest reserve-with-timeout-return-nil-imediately
   (testing "If you use a timeout of 0, reserve will immediately return either a job or None"
     (let [consumer (beanstalkd-factory)]
-      (is (nil? (reserve consumer :with-timeout 0))))))
+      (is (nil? (reserve consumer :with-timeout 0)))))
+  (testing "with-statement"
+    (with-beanstalkd (beanstalkd-factory)
+      (is (nil? (reserve :with-timeout 0))))))
 
 ; Tube Management
 
@@ -71,21 +88,33 @@
   (testing "Watch tube"
     (let [bt (beanstalkd-factory)]
       (is (= (number? (first (watch-tube bt "default")))))))
+  (testing "watch tube in with-statement"
+    (with-beanstalkd (beanstalkd-factory)
+      (is (= (number? (first (watch-tube "default")))))))
 
   (let [bt (beanstalkd-factory)]
     (testing "List default tubes"
-      (is (= ["default"] (list-tubes bt))))
+      (is (= ["default"] (list-tubes bt)))
+      (with-beanstalkd (beanstalkd-factory)
+        (is (= ["default"] (list-tubes)))))
 
     (testing "List default tube used"
-      (is (= "default" (list-tube-used bt))))
+      (is (= "default" (list-tube-used bt)))
+      (with-beanstalkd (beanstalkd-factory)
+        (is (= "default" (list-tube-used)))))
+
 
     (testing "Get using"
-      (is (= "default" (using bt))))
+      (is (= "default" (using bt)))
+      (with-beanstalkd (beanstalkd-factory)
+        (is (= "default" (using)))))
 
 
     (let [_ (use-tube bt "test-tube")]
       (testing "List available tubes"
-        (is (= ["default" "test-tube"] (list-tubes bt))))
+        (is (= ["default" "test-tube"] (list-tubes bt)))
+        (with-beanstalkd (beanstalkd-factory)
+          (is (= ["default" "test-tube"] (list-tubes)))))
 
       (testing "List tube used"
         (is (= "test-tube" (list-tube-used bt))))
@@ -216,11 +245,3 @@
     (delete consumer jid21twice)
     (is (= "priority 42" (. (reserve consumer) body)))
     (delete consumer jid42)))
-
-(deftest put-and-reserve-in-with-statement
-  (testing "with-beanstalkd"
-    (with-beanstalkd (beanstalkd-factory)
-      (put "body"))
-    (with-beanstalkd (beanstalkd-factory)
-      (let [job (reserve)]
-        (delete job)))))
