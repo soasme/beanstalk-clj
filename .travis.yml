@@ -1,0 +1,15 @@
+language: clojure
+
+lein: lein2
+
+install:
+    # Install most recent beanstalkd from source
+    - wget https://github.com/kr/beanstalkd/archive/v1.10.tar.gz
+    - tar xf v1.10.tar.gz
+    - make -C beanstalkd-1.10/
+    - mv beanstalkd-1.10/beanstalkd .
+
+before_script:
+    - ./beanstalkd &
+
+script: "lein2 test"
