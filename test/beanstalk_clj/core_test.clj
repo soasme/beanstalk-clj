@@ -216,3 +216,11 @@
     (delete consumer jid21twice)
     (is (= "priority 42" (. (reserve consumer) body)))
     (delete consumer jid42)))
+
+(deftest put-and-reserve-in-with-statement
+  (testing "with-beanstalkd"
+    (with-beanstalkd (beanstalkd-factory)
+      (put "body"))
+    (with-beanstalkd (beanstalkd-factory)
+      (let [job (reserve)]
+        (delete job)))))

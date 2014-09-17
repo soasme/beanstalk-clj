@@ -10,7 +10,7 @@
 (def ^:const default-priority 2147483648) ; 2^31
 (def ^:const default-ttr 120)
 (def ^:const crlf (str \return \newline))
-(def ^:dynamic ^:private *beanstalkd* nil)
+(def ^:dynamic *beanstalkd* nil)
 
 (defn member? [list elt]
   "True if list contains at least one instance of elt"
@@ -150,8 +150,8 @@
 (defmacro with-beanstalkd
   "Takes a url an config. That value is used to configure the subject
    of all of the operations within the dynamic scope of body of code."
-  [config & body]
-  `(binding [*beanstalkd* (beanstalkd-factory config)]
+  [beanstalkd & body]
+  `(binding [*beanstalkd* ~beanstalkd]
      ~@body
      (.close *beanstalkd*)))
 
@@ -166,8 +166,13 @@
      (defmethod ~name Beanstalkd ~@body)
      (inject-beanstalkd ~name)))
 
+(defmacro ^:private defop
+  [name & body]
+  `(do
+     (defn ~name ~@body)
+     (alter-var-root (var ~name) with-beanstalkd*)))
 
-(defn put
+(defop put
   ([beanstalkd body & {:keys [priority delay ttr]
                        :or {priority default-priority
                             delay 0
@@ -186,7 +191,7 @@
                  ["JOB_TOO_BIG" "BURIED" "DRAINING"])))
      (throw+ {:type :type-error :message "Job body must be a String"}))))
 
-(defn reserve
+(defop reserve
   ([beanstalkd & {:keys [with-timeout]
                   :or {with-timeout nil}}]
   (try+
@@ -206,94 +211,94 @@
 
 
 
-(defn peek
+(defop peek
   [beanstalkd jid]
   (interact-peek beanstalkd
                  (beanstalkd-cmd :peek jid)))
 
-(defn peek-ready
+(defop peek-ready
   [beanstalkd]
   (interact-peek beanstalkd
                  (beanstalkd-cmd :peek-ready)))
 
-(defn peek-delayed
+(defop peek-delayed
   [beanstalkd]
   (interact-peek beanstalkd
                  (beanstalkd-cmd :peek-delayed)))
 
-(defn peek-buried
+(defop peek-buried
   [beanstalkd]
   (interact-peek beanstalkd
                  (beanstalkd-cmd :peek-buried)))
 
 
-(defn list-tubes
+(defop list-tubes
   [beanstalkd]
   (interact-yaml beanstalkd
                  (beanstalkd-cmd :list-tubes)
                  ["OK"]
                  []))
 
-(defn list-tube-used
+(defop list-tube-used
   [beanstalkd]
   (interact-value beanstalkd
                   (beanstalkd-cmd :list-tube-used)
                   ["USING"]
                   []))
 
-(defn using
+(defop using
   [beanstalkd]
   (list-tube-used beanstalkd))
 
 
-(defn use-tube
+(defop use-tube
   [beanstalkd tube]
   (interact-value beanstalkd
             (beanstalkd-cmd :use tube)
             ["USING"]
             []))
 
-(defn list-tubes-watched
+(defop list-tubes-watched
   [beanstalkd]
   (interact-yaml beanstalkd
                  (beanstalkd-cmd :list-tubes-watched)
                  ["OK"]
                  []))
 
-(defn watching
+(defop watching
   [beanstalkd]
   (list-tubes-watched beanstalkd))
 
 
-(defn watch-tube
+(defop watch-tube
   [beanstalkd tube]
   (interact beanstalkd
             (beanstalkd-cmd :watch tube)
             ["WATCHING"]
             []))
 
-(defn ignore
+(defop ignore
   [beanstalkd tube]
   (interact-value beanstalkd
                        (beanstalkd-cmd :ignore tube)
                        ["WATCHING"]
                        ["NOT_IGNORED"]))
 
-(defn stats-tube
+(defop stats-tube
   [beanstalkd tube]
   (interact-yaml beanstalkd
                  (beanstalkd-cmd :stats-tube tube)
                  ["OK"]
                  ["NOT_FOUND"]))
 
-(defn pause-tube
+(defop pause-tube
   [beanstalkd tube delay]
   (interact beanstalkd
             (beanstalkd-cmd :pause-tube tube delay)
             ["PAUSED"]
             ["NOT_FOUND"]))
 
-(defn stats-job
+(defop stats-job
   [beanstalkd jid]
   (interact-yaml beanstalkd
                  (beanstalkd-cmd :stats-job jid)
@@ -303,7 +308,7 @@
 (defmulti stats
   (fn [instance] (type instance)))
 
-(defmethod stats Beanstalkd
+(defmethod-beanstalkd stats
   [beanstalkd]
   (interact-yaml beanstalkd
                   (beanstalkd-cmd :stats)
@@ -314,7 +319,7 @@
   [job]
   (stats-job (.consumer job) (.jid job)))
 
-(defn kick-job
+(defop kick-job
   [beanstalkd jid]
   (interact beanstalkd
             (beanstalkd-cmd :kick-job jid)
@@ -326,7 +331,7 @@
   (fn [instance & rest]
     (type instance)))
 
-(defmethod kick Beanstalkd
+(defmethod-beanstalkd kick
   ([beanstalkd bound]
    (interact-value beanstalkd
                    (beanstalkd-cmd :kick bound)
@@ -350,7 +355,7 @@
   (fn [instance & rest]
     (type instance)))
 
-(defmethod bury Beanstalkd
+(defmethod-beanstalkd bury
   ([beanstalkd jid priority]
     (interact beanstalkd
               (beanstalkd-cmd :bury jid priority)
@@ -370,7 +375,7 @@
   (fn [instance & rest]
     (type instance)))
 
-(defmethod release Beanstalkd
+(defmethod-beanstalkd release
   [beanstalkd jid & {:keys [priority delay]
                      :or {priority default-priority
                           delay 0}}]
@@ -392,7 +397,7 @@
   (fn [instance & rest]
     (type instance)))
 
-(defmethod touch Beanstalkd
+(defmethod-beanstalkd touch
   [beanstalkd jid]
   (interact beanstalkd
             (beanstalkd-cmd :touch (first rest))
