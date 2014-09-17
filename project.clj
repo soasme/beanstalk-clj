@@ -1,4 +1,4 @@
-(defproject beanstalk-clj "0.1.0-SNAPSHOT"
+(defproject beanstalk-clj "0.1.0"
   :description "A simple beanstalkd client library for Clojure."
   :url "http://github.com/soasme/beanstalk-clj"
   :license {:name "Eclipse Public License"
