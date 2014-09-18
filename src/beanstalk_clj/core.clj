@@ -299,25 +299,23 @@
             ["NOT_FOUND"]))
 
 (defop stats-job
-  [beanstalkd jid]
+  ([beanstalkd jid]
   (interact-yaml beanstalkd
                  (beanstalkd-cmd :stats-job jid)
                  ["OK"]
                  ["NOT_FOUND"]))
+  ([job]
+   (stats-job (.consumer job) (.jid job))))
 
 (defmulti stats
   (fn [instance] (type instance)))
 
-(defmethod-beanstalkd stats
+(defop stats-beanstalkd
   [beanstalkd]
   (interact-yaml beanstalkd
                   (beanstalkd-cmd :stats)
                   ["OK"]
                   []))
-
-(defmethod stats Job
-  [job]
-  (stats-job (.consumer job) (.jid job)))
 
 (defop kick-job
   [beanstalkd jid]
@@ -346,7 +344,7 @@
 
 (defn- job-priority
   [job]
-  (let [stats (stats job)]
+  (let [stats (stats-job job)]
     (if (nil? stats)
       default-priority
       (:pri stats))))

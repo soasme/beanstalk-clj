@@ -144,7 +144,7 @@
         consumer (beanstalkd-factory)
         jid (put producer "body")
         job (reserve consumer)
-        stats-map (stats job)]
+        stats-map (stats-job job)]
     (testing "stats"
       (is (= "default" (:tube stats-map)))
       (is (= "reserved" (:state stats-map))))
@@ -155,16 +155,21 @@
       (is-thrown+? {:type :command-failure,
                     :status "NOT_FOUND",
                     :results []}
-                   (stats job)))
+                   (stats-job job)))
 
     (testing "stats default tube"
       (let [s (stats-tube consumer "default")]
         (is (= "default" (:name s)))))
 
     (testing "server-level statistics"
-      (let [s (stats consumer)]
-        (is (= 0 (:current-jobs-reserved s)))))))
+      (let [s (stats-beanstalkd consumer)]
+        (is (= 0 (:current-jobs-reserved s)))))
+    ))
 
+(deftest stats-in-with
+  (testing "server-level statistics in with-statement"
+    (with-beanstalkd (beanstalkd-factory)
+      (is (= 0 (:current-jobs-reserved (stats-beanstalkd)))))))
 
 (deftest a-job-with-a-delay
   (testing "a job with a delay will only be available for reservation once this delay passed"
@@ -175,7 +180,7 @@
           job (reserve consumer :with-timeout 1)]
       (is (nil? reserve-imediately))
       (is (= "body" (.body job)))
-      (is (= "reserved" (:state (stats job))))
+      (is (= "reserved" (:state (stats-job job))))
       (delete job))))
 
 (deftest release-job
@@ -186,7 +191,7 @@
           job (reserve consumer)
           ]
       (release job)
-      (is (= "ready" (:state (stats job))))
+      (is (= "ready" (:state (stats-job job))))
       (delete job))))
 
 (deftest bury-and-kick
@@ -197,11 +202,11 @@
         ]
     (testing "bury job"
       (bury job)
-      (is (= "buried" (:state (stats job))))
+      (is (= "buried" (:state (stats-job job))))
       (is (nil? (reserve consumer :with-timeout 0))))
     (testing "kick job"
       (kick job)
-      (is (= "ready" (:state (stats job)))))
+      (is (= "ready" (:state (stats-job job)))))
     (delete consumer jid)))
 
 (deftest inspecting-jobs
@@ -217,7 +222,7 @@
     (testing "peek did not reserve the job"
       (let [job (peek consumer jid)]
         (is (= "body" (. job body)))
-        (is (= "ready" (:state (stats job))))))
+        (is (= "ready" (:state (stats-job job))))))
 
     (testing "peek ready"
       (let [job (peek-ready consumer)]
@@ -225,12 +230,12 @@
         (is-thrown+?
           {:type :command-failure, :status "NOT_FOUND", :results nil}
           (release job))
-        (is (= "ready" (:state (stats job))))
+        (is (= "ready" (:state (stats-job job))))
 
         (delete job)
         (is-thrown+?
           {:type :command-failure, :status "NOT_FOUND", :results nil}
-          (stats job))))))
+          (stats-job job))))))
 
 (deftest job-priorities
   (let [producer (beanstalkd-factory)
