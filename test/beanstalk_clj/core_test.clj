@@ -4,6 +4,8 @@
             [clojure.string :as string]
             [beanstalk-clj.core :refer :all]))
 
+(defmacro beanstalk [& body] `(with-beanstalkd (beanstalkd-factory)  ~@body))
+
 (defn slingshot-exception-class
   "Return the best guess at a slingshot exception class."
   []
@@ -210,7 +212,7 @@
     (delete consumer jid)))
 
 (deftest inspecting-jobs
-  ; TODO: test peek-delayed, peek-buried
+  ; TODO: test peek-delayed
   (let [producer (beanstalkd-factory)
         consumer (beanstalkd-factory)
         jid (put producer "body")]
@@ -250,3 +252,46 @@
     (delete consumer jid21twice)
     (is (= "priority 42" (. (reserve consumer) body)))
     (delete consumer jid42)))
+
+(deftest job-op-in-with
+  (beanstalk
+   (testing "stats"
+     (let [jid (put "hey")
+           job (reserve)]
+       (is (= 120 (:ttr (stats-job jid))))
+       (is (= 120 (:ttr (stats-job job))))
+       (delete job)))
+   (testing "release"
+     (let [jid (put "hey")
+           job (reserve)]
+       (release job)
+       (is (= "ready" (:state (stats-job jid))))
+       (reserve)
+       (is (= "reserved" (:state (stats-job jid))))
+       (release jid)
+       (is (= "ready" (:state (stats-job jid))))
+       (reserve)
+       (delete job)))
+   (testing "delete job"
+     (let [jid (put "delete")
+           job (reserve)]
+       (delete job)
+       (is-thrown+?
+        {:type :command-failure, :status "NOT_FOUND", :results nil}
+        (stats-job jid))))
+   (testing "delete jid"
+     (let [jid (put "delete jid")]
+       (delete jid)
+       (is-thrown+?
+        {:type :command-failure, :status "NOT_FOUND", :results nil}
+        (stats-job jid))))
+   (testing "bury && kick"
+     (let [jid (put "bury && kick")
+           job (reserve)]
+       (bury jid)
+       (is (= "buried" (:state (stats-job job))))
+       (is (= "bury && kick" (.body (peek-buried))))
+       (kick 1)
+       (is (= "ready" (:state (stats-job job))))
+       (reserve)
+       (delete jid)))))

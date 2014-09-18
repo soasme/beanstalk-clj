@@ -140,11 +140,13 @@
 
 (defn- with-beanstalkd*
   [f]
-   (fn [& [beanstalkd & rest :as args]]
-     (if (and (thread-bound? #'*beanstalkd*)
-              (not (identical? *beanstalkd* beanstalkd)))
-       (apply f *beanstalkd* args)
-       (apply f beanstalkd rest))))
+   (fn [& [first & rest :as args]]
+     (if (instance? Job first)
+       (apply f args)
+       (if (and (thread-bound? #'*beanstalkd*)
+                (not (identical? *beanstalkd* first)))
+         (apply f *beanstalkd* args)
+         (apply f first rest)))))
 
 
 (defmacro with-beanstalkd
@@ -298,6 +300,14 @@
             ["PAUSED"]
             ["NOT_FOUND"]))
 
+(defn ^:private job-dispatcher
+  ([] Beanstalkd)
+  ([& [instance & rest :as args]]
+    (println args)
+    (if (instance? Job instance)
+        Job
+        Beanstalkd)))
+
 (defop stats-job
   ([beanstalkd jid]
   (interact-yaml beanstalkd
@@ -307,8 +317,6 @@
   ([job]
    (stats-job (.consumer job) (.jid job))))
 
-(defmulti stats
-  (fn [instance] (type instance)))
 
 (defop stats-beanstalkd
   [beanstalkd]
@@ -324,19 +332,21 @@
             ["KICKED"]
             ["NOT_FOUND"]))
 
+(defn ^:private job-dispatcher
+  [instance & rest]
+  (if (instance? Job instance)
+      Job
+      Beanstalkd))
 
-(defmulti kick
-  (fn [instance & rest]
-    (type instance)))
+(defmulti kick job-dispatcher)
+
 
 (defmethod-beanstalkd kick
   ([beanstalkd bound]
    (interact-value beanstalkd
                    (beanstalkd-cmd :kick bound)
                    ["KICKED"]
-                   []))
-  ([beanstalkd]
-   (kick beanstalkd 1)))
+                   [])))
 
 (defmethod kick Job
   [job]
@@ -349,9 +359,7 @@
       default-priority
       (:pri stats))))
 
-(defmulti bury
-  (fn [instance & rest]
-    (type instance)))
+(defmulti bury job-dispatcher)
 
 (defmethod-beanstalkd bury
   ([beanstalkd jid priority]
@@ -369,9 +377,8 @@
    (bury (.consumer job) (.jid job) (job-priority job))))
 
 
-(defmulti release
-  (fn [instance & rest]
-    (type instance)))
+
+(defmulti release job-dispatcher)
 
 (defmethod-beanstalkd release
   [beanstalkd jid & {:keys [priority delay]
@@ -384,16 +391,14 @@
 
 (defmethod release Job
   [job & {:keys [priority delay]
-          :or {priority default-priority ; FIXME
+          :or {priority default-priority ; FIXME: or stats
                delay 0}}]
   (release (.consumer job)
            (.jid job)
            :priority priority
            :delay delay))
 
-(defmulti touch
-  (fn [instance & rest]
-    (type instance)))
+(defmulti touch job-dispatcher)
 
 (defmethod-beanstalkd touch
   [beanstalkd jid]
@@ -406,9 +411,7 @@
   [job]
   (touch (.consumer job) (.jid job)))
 
-(defmulti delete
-  (fn [instance & rest]
-    (type instance)))
+(defmulti delete job-dispatcher)
 
 (defmethod-beanstalkd delete
   [beanstalkd jid]
