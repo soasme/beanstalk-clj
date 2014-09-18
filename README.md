@@ -11,7 +11,7 @@ To include beanstalk-clj in your project, simply add the
 following to your `project.clj` dependencies:
 
 ```clojure
-[beanstalk-clj "0.1.1"]
+[beanstalk-clj "0.1.2"]
 ```
 ## State
 
