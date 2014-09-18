@@ -63,6 +63,10 @@ After reserved, delete job:
      (delete job))
 ```
 
+## Documentations
+
+* [Intro](https://github.com/soasme/beanstalk-clj/blob/master/doc%2Fintro.md)
+
 ## License
 
 Copyright © 2014 Lin Ju (soasme)
