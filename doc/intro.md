@@ -4,8 +4,8 @@ Getting started
 ---------------
 
 Assume you have installed beanstalkd at the very begining.
-To start our trip, simply start it using:
-`beanstalkd -VV` (Let's see what it really happens!):
+To start our trip, simply start it by typing
+`beanstalkd -VV` in shell. Let's see what it really happens!
 
 ```
 ~ % beanstalkd -VV
@@ -13,8 +13,8 @@ pid 6034
 bind 4 0.0.0.0:11300
 ```
 
-To use `beanstalk-clj` we have to use the library and set up
-a connection to an (already running) beanstalkd server.
+To use `beanstalk-clj` we have to use the library first and set up
+a connection to an already running beanstalkd server.
 
 ```clj
 (use 'beanstalk-clj)
