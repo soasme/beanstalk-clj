@@ -154,8 +154,10 @@
    of all of the operations within the dynamic scope of body of code."
   [beanstalkd & body]
   `(binding [*beanstalkd* ~beanstalkd]
-     ~@body
-     (.close *beanstalkd*)))
+     (let [rs# (do ~@body)]
+       (.close *beanstalkd*)
+       rs#)))
+
 
 (defn inject-beanstalkd
   [multifn]

@@ -295,3 +295,11 @@
        (is (= "ready" (:state (stats-job job))))
        (reserve)
        (delete jid)))))
+
+(deftest with-statement-return-value
+  (testing "return"
+    (is (number? (with-beanstalkd (beanstalkd-factory)
+      (let [jid (put "return")
+            job (reserve)]
+        (delete jid)
+        jid))))))
