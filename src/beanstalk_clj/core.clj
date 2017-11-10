@@ -3,6 +3,7 @@
             [clj-yaml.core :as yaml])
   (:use [slingshot.slingshot :only [try+ throw+]]
         [clojure.java.io])
+  (:refer-clojure :exclude [read peek])
   (:import [java.net Socket]))
 
 (def ^:const default-host "localhost")
